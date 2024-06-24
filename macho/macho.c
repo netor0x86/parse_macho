@@ -133,7 +133,7 @@ void parse_segment_command_64(FILE *p_file, struct load_command_info *lc_info, s
 {
     struct segment_command_64 segment_command64 = {0};
 
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&segment_command64),
           sizeof(struct segment_command_64),
           1,
@@ -155,15 +155,15 @@ void parse_segment_command_64(FILE *p_file, struct load_command_info *lc_info, s
     }
 
     fread(p_section_64, sizeof(struct section_64) * segment_command64.nsects, 1, p_file);
-    long offset = ftell(p_file);
+
     for (int i = 0; i < segment_command64.nsects; i ++)
     {
         printf("sectname name: %s segname: %s \r\n", p_section_64[i].sectname, p_section_64[i].segname);
-        if (p_section_64[i].offset != 0 && p_section_64[i].flags & S_ATTR_SOME_INSTRUCTIONS && ((p_section_64[i].flags & 0xff & S_REGULAR) == 0))
+        if (p_section_64[i].offset != 0 && p_section_64[i].flags & S_ATTR_SOME_INSTRUCTIONS && ((p_section_64[i].flags & 0xff | S_REGULAR) == 0))
         {
             uint8_t *code = (uint8_t*)malloc(sizeof(uint8_t) * p_section_64[i].size);
             uint64_t code_len = p_section_64[i].size;
-            fseek(p_file, p_section_64[i].offset, SEEK_SET);
+            fseeko(p_file, p_section_64[i].offset, SEEK_SET);
 
             fread(code, sizeof(char*) * p_section_64[i].size, 1, p_file);
 
@@ -207,18 +207,18 @@ void parse_segment_command_64(FILE *p_file, struct load_command_info *lc_info, s
         {
             uint8_t *code = (uint8_t*)malloc(sizeof(uint8_t) * p_section_64[i].size);
 
-            fseek(p_file, p_section_64[i].offset, SEEK_SET);
+            fseeko(p_file, p_section_64[i].offset, SEEK_SET);
             fread(code, sizeof(char*) * p_section_64[i].size, 1, p_file);
 
             uint64_t size = 0;
             while (size < p_section_64[i].size)
             {
-                if (*(code + size) == NULL)
+                if (*((char*)(code + size)) == '\0')
                 {
                     size ++;
                     continue;
                 }
-                size_t len = strlen(code + size);
+                size_t len = strlen((const char*)code + size);
                 printf("%s \r\n", code + size);
                 size += (len + 1);
             }
@@ -227,29 +227,92 @@ void parse_segment_command_64(FILE *p_file, struct load_command_info *lc_info, s
         }
     }
 
-    if (p_section_64)
+    free(p_section_64);
+    p_section_64 = NULL;
+}
+
+void parse_lc_symtab_string(FILE *p_file, uint32_t n_strx, uint32_t stroff)
+{
+    /* 保存文件指针偏移 */
+    off_t pos = ftello(p_file);
+
+    fseeko(p_file, n_strx + stroff, SEEK_SET);
+    size_t mal_size = 50;
+    char *p_str = (char*)malloc(mal_size);
+    if (p_str == NULL)
     {
-        free(p_section_64);
-        p_section_64 = NULL;
+        /* 恢复文件指针偏移 */
+        fseeko(p_file, pos, SEEK_SET);
+        return;
     }
-    fseek(p_file, offset, SEEK_SET);
+
+    uint32_t cnt = 0;
+    do
+    {
+        fread(p_str + cnt, 1, 1, p_file);
+
+        if (*(p_str + cnt) == '\0')
+        {
+            printf("str: %s\r\n", p_str);
+            break;
+        }
+
+        if (cnt >= mal_size * 2 / 3)
+        {
+            mal_size *= 2;
+            p_str = (char*)realloc(p_str,mal_size);
+            if (p_str == NULL)
+            {
+                /* 恢复文件指针偏移 */
+                fseeko(p_file, pos, SEEK_SET);
+                return;
+            }
+        }
+
+        cnt ++;
+    } while(1);
+
+    free(p_str);
+    p_str = NULL;
+
+    /* 恢复文件指针偏移 */
+    fseeko(p_file, pos, SEEK_SET);
 }
 
 void parse_lc_symtab(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct symtab_command symtab_command = {0};
+    size_t read_size = -1;
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
+    read_size = fread((char *)(&symtab_command), sizeof(struct symtab_command), 1, p_file);
+    if (read_size != 1)
+    {
+        printf("fread symtab_command error.\r\n");
+        return;
+    }
+    printf("symtab_command.nsyms : %d \r\n", symtab_command.nsyms);
+    fseeko(p_file, symtab_command.symoff, SEEK_SET);
+    for (int i = 0; i < symtab_command.nsyms; i ++)
+    {
+        struct nlist_64 nlist64 = {0};
+        fread(&nlist64, sizeof(struct nlist_64), 1, p_file);
 
-    fseek(p_file, lc_info->offset, SEEK_SET);
-    fread((char *)(&symtab_command), sizeof(struct symtab_command), 1, p_file);
+        printf("n_strx: %d(%x) n_type: %d(%x) n_sect:  %d(%x) n_desc: %d(%x) n_value: %llu(%llx) \r\n",
+               nlist64.n_un.n_strx, nlist64.n_un.n_strx,
+               nlist64.n_type, nlist64.n_type,
+               nlist64.n_sect, nlist64.n_sect,
+               nlist64.n_desc, nlist64.n_desc,
+               nlist64.n_value, nlist64.n_value);
 
-    printf("type: %s \r\n", st_lc_info.p_lc_name);
+        parse_lc_symtab_string(p_file, nlist64.n_un.n_strx, symtab_command.stroff);
+    }
 }
 
 void parse_lc_dysymtab(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct dysymtab_command dysymtabCommand = {0};
 
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&dysymtabCommand), sizeof(struct dysymtab_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -258,11 +321,11 @@ void parse_lc_dysymtab(FILE *p_file, struct load_command_info *lc_info, struct l
 void parse_lc_id_dylinker(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     char *p_load_command = (char*)malloc(lc_info->st_load_command.cmdsize * sizeof(char));
-    fseek(p_file, lc_info->offset, SEEK_SET);
-//    fseek(p_file, sizeof(struct load_command) * -1, SEEK_CUR);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
+//    fseeko(p_file, sizeof(struct load_command) * -1, SEEK_CUR);
     if (p_load_command == NULL)
     {
-        fseek(p_file, lc_info->st_load_command.cmdsize, SEEK_CUR);
+        fseeko(p_file, lc_info->st_load_command.cmdsize, SEEK_CUR);
         return;
     }
 
@@ -280,7 +343,7 @@ void parse_lc_id_dylinker(FILE *p_file, struct load_command_info *lc_info, struc
 void parse_lc_uuid(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct uuid_command uuidCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&uuidCommand), sizeof(struct uuid_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -289,7 +352,7 @@ void parse_lc_uuid(FILE *p_file, struct load_command_info *lc_info, struct lc_in
 void parse_lc_build_version(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct build_version_command buildVersionCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&buildVersionCommand), sizeof(struct build_version_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -298,7 +361,7 @@ void parse_lc_build_version(FILE *p_file, struct load_command_info *lc_info, str
 void parse_lc_source_version(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct source_version_command sourceVersionCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&sourceVersionCommand), sizeof(struct source_version_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -307,7 +370,7 @@ void parse_lc_source_version(FILE *p_file, struct load_command_info *lc_info, st
 void parse_lc_main(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct entry_point_command entryPointCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&entryPointCommand), sizeof(struct entry_point_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -317,7 +380,7 @@ void parse_lc_main(FILE *p_file, struct load_command_info *lc_info, struct lc_in
 void parse_lc_id_dylib(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct dylib_command dylibCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&dylibCommand), sizeof(struct dylib_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -326,7 +389,7 @@ void parse_lc_id_dylib(FILE *p_file, struct load_command_info *lc_info, struct l
 void parse_lc_code_signature(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct linkedit_data_command linkeditDataCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&linkeditDataCommand), sizeof(struct linkedit_data_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -335,7 +398,7 @@ void parse_lc_code_signature(FILE *p_file, struct load_command_info *lc_info, st
 void parse_lc_idfvmlib(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct fvmlib_command fvmlibCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&fvmlibCommand), sizeof(struct fvmlib_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -344,7 +407,7 @@ void parse_lc_idfvmlib(FILE *p_file, struct load_command_info *lc_info, struct l
 void parse_lc_dyld_info(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct dyld_info_command dyldInfoCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&dyldInfoCommand) + sizeof(uint32_t) * 2, sizeof(struct dyld_info_command) - sizeof(uint32_t) * 2, 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -353,7 +416,7 @@ void parse_lc_dyld_info(FILE *p_file, struct load_command_info *lc_info, struct 
 void parse_lc_version_min_macosx(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct version_min_command versionMinCommand = {0};
-    fseek(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, lc_info->offset, SEEK_SET);
     fread((char *)(&versionMinCommand) + sizeof(uint32_t) * 2, sizeof(struct version_min_command) - sizeof(uint32_t) * 2, 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);

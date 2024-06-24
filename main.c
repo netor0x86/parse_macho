@@ -11,6 +11,7 @@
 #define FILE_NAME ""
 char *p_file_name = FILE_NAME;
 
+
 long get_file_size(const char *filename)
 {
     printf("file_name : %s \r\n", filename);
@@ -28,6 +29,7 @@ void parse_load_command(FILE *p_file, GList *list)
 {
     for (GList *node = g_list_first(list); node != NULL; node = g_list_next(node))
     {
+        printf("-----------------------------------------------\r\n");
         struct load_command_info *lc_info = (struct load_command_info*)node->data;
         printf("addr: %llx -> cmd: %u(%x), cmdsize: %u(%x) \r\n",
                lc_info->offset,
@@ -94,6 +96,10 @@ void magic64()
     printf("reserved: %x \r\n", st_mach_header_64.reserved);
 
     p_st_load_command = (struct load_command *)malloc(sizeof(struct load_command) * st_mach_header_64.ncmds);
+    if (p_st_load_command == NULL)
+    {
+        return;
+    }
 
     printf("--------------------\r\n");
 

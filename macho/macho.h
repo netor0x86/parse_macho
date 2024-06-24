@@ -6,6 +6,7 @@
 #define CSTUDY_MACHO_H
 #include <mach-o/loader.h>
 #include <mach/machine.h>
+#include <mach-o/nlist.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
