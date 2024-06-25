@@ -7,7 +7,7 @@
 
 #define SAFE_FREE(point) {if (point) {free(point); point = NULL;}}
 
-/* 调试的时候这里可以设置一个文件 */
+
 #define FILE_NAME ""
 char *p_file_name = FILE_NAME;
 
@@ -80,7 +80,15 @@ void magic64()
     printf("mach_header_64 size: %lx \r\n", sizeof(struct mach_header_64));
     printf("magic: %x \r\n", st_mach_header_64.magic);
     printf("cpu_type_t: %x \r\n", st_mach_header_64.cputype);
+    for (int i = 0; i < get_header_cpu_type_info_size(); i ++)
+    {
+        if (st_mach_header_64.cputype == arr_st_header_cpu_type[i].cpu_type)
+        {
+            printf("cpu_type: %s\r\n", arr_st_header_cpu_type[i].p_cpu_type_name);
+        }
+    }
     printf("cpu_subtype_t: %x \r\n", st_mach_header_64.cpusubtype);
+
     printf("filetype: %x, %s \r\n", st_mach_header_64.filetype, arr_st_header_file_type[st_mach_header_64.filetype].p_file_type_name);
     printf("ncmds: %x \r\n", st_mach_header_64.ncmds);
     printf("sizeofcmds: %x \r\n", st_mach_header_64.sizeofcmds);

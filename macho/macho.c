@@ -4,6 +4,85 @@
 #include <strings.h>
 #include "macho.h"
 
+/** header 的 cputype 的说明 */
+struct header_cpu_type_info arr_st_header_cpu_type[] =
+{
+    {CPU_TYPE_ANY, "CPU_TYPE_ANY", ""},
+
+    {CPU_TYPE_VAX, "CPU_TYPE_VAX", ""},
+
+    {CPU_TYPE_MC680x0, "CPU_TYPE_MC680x0", ""},
+    {CPU_TYPE_X86, "CPU_TYPE_X86", ""},
+    {CPU_TYPE_I386, "CPU_TYPE_I386", "compatibility"},
+    {CPU_TYPE_X86_64, "CPU_TYPE_X86_64", ""},
+
+    {CPU_TYPE_MC98000, "CPU_TYPE_MC98000", ""},
+    {CPU_TYPE_HPPA, "CPU_TYPE_HPPA", ""},
+    {CPU_TYPE_ARM, "", ""},
+    {CPU_TYPE_ARM64, "CPU_TYPE_ARM64", ""},
+    {CPU_TYPE_ARM64_32, "CPU_TYPE_ARM64_32", ""},
+    {CPU_TYPE_MC88000, "CPU_TYPE_MC88000", ""},
+    {CPU_TYPE_SPARC, "CPU_TYPE_SPARC", ""},
+    {CPU_TYPE_I860, "CPU_TYPE_I860", ""},
+
+    {CPU_TYPE_POWERPC, "CPU_TYPE_POWERPC", ""},
+    {CPU_TYPE_POWERPC64, "CPU_TYPE_POWERPC64", ""},
+};
+
+int get_header_cpu_type_info_size()
+{
+    return sizeof(arr_st_header_cpu_type) / sizeof(struct header_flag_info);
+}
+
+/** header 的 cpusubtype 的说明 */
+//struct header_cpu_sub_type_info arr_st_header_cpu_sub_type[] =
+//{
+//    {CPU_SUBTYPE_MASK, "CPU_SUBTYPE_MASK", "mask for feature flags"},
+//    {CPU_SUBTYPE_LIB64, "CPU_SUBTYPE_LIB64", "64 bit libraries"},
+//    {CPU_SUBTYPE_PTRAUTH_ABI, "CPU_SUBTYPE_PTRAUTH_ABI", "pointer authentication with versioned ABI"},
+//
+//    {CPU_SUBTYPE_ANY, "CPU_SUBTYPE_ANY", ""},
+//
+//    {CPU_SUBTYPE_MULTIPLE, "CPU_SUBTYPE_MULTIPLE", ""},
+//    {CPU_SUBTYPE_LITTLE_ENDIAN, "CPU_SUBTYPE_LITTLE_ENDIAN", ""},
+//    {CPU_SUBTYPE_BIG_ENDIAN, "CPU_SUBTYPE_BIG_ENDIAN", ""},
+//
+//    {CPU_SUBTYPE_VAX_ALL, "CPU_SUBTYPE_VAX_ALL", ""},
+//    {CPU_SUBTYPE_VAX780, "CPU_SUBTYPE_VAX780", ""},
+//    {CPU_SUBTYPE_VAX785, "CPU_SUBTYPE_VAX785", ""},
+//    {CPU_SUBTYPE_VAX750, "CPU_SUBTYPE_VAX750", ""},
+//    {CPU_SUBTYPE_VAX730, "CPU_SUBTYPE_VAX730", ""},
+//    {CPU_SUBTYPE_UVAXI, "CPU_SUBTYPE_UVAXI", ""},
+//    {CPU_SUBTYPE_UVAXII, "CPU_SUBTYPE_UVAXII", ""},
+//    {CPU_SUBTYPE_VAX8200, "CPU_SUBTYPE_VAX8200", ""},
+//    {CPU_SUBTYPE_VAX8500, "CPU_SUBTYPE_VAX8500", ""},
+//    {CPU_SUBTYPE_VAX8600, "CPU_SUBTYPE_VAX8600", ""},
+//    {CPU_SUBTYPE_VAX8650, "CPU_SUBTYPE_VAX8650", ""},
+//    {CPU_SUBTYPE_VAX8800, "CPU_SUBTYPE_VAX8800", ""},
+//    {CPU_SUBTYPE_UVAXIII, "CPU_SUBTYPE_UVAXIII", ""},
+//
+//    {CPU_SUBTYPE_MC680x0_ALL, "CPU_SUBTYPE_MC680x0_ALL", ""},
+//    {CPU_SUBTYPE_MC68030, "CPU_SUBTYPE_MC68030", "compat"},
+//    {CPU_SUBTYPE_MC68040, "CPU_SUBTYPE_MC68040", ""},
+//    {CPU_SUBTYPE_MC68030_ONLY, "CPU_SUBTYPE_MC68030_ONLY", ""},
+//
+//    {CPU_SUBTYPE_I386_ALL, "CPU_SUBTYPE_I386_ALL", ""},
+//    {CPU_SUBTYPE_386, "CPU_SUBTYPE_386", ""},
+//    {CPU_SUBTYPE_486, "CPU_SUBTYPE_486", ""},
+//    {CPU_SUBTYPE_486SX, "CPU_SUBTYPE_486SX", ""},
+//    {CPU_SUBTYPE_586, "CPU_SUBTYPE_586", ""},
+//    {CPU_SUBTYPE_PENT, "CPU_SUBTYPE_PENT", ""},
+//    {CPU_SUBTYPE_PENTPRO, "CPU_SUBTYPE_PENTPRO", ""},
+//    {CPU_SUBTYPE_PENTII_M3, "CPU_SUBTYPE_PENTII_M3", ""},
+//    {CPU_SUBTYPE_PENTII_M5, "CPU_SUBTYPE_PENTII_M5", ""},
+//    {CPU_SUBTYPE_CELERON, "CPU_SUBTYPE_CELERON", ""},
+//};
+//
+//int get_header_cpu_sub_type_info_size()
+//{
+//    return sizeof(arr_st_header_cpu_sub_type) / sizeof(struct header_cpu_sub_type_info);
+//}
+
 /** header 的 filetype 的说明 */
 struct header_file_type_info arr_st_header_file_type[] =
 {
@@ -133,7 +212,7 @@ void parse_segment_command_64(FILE *p_file, struct load_command_info *lc_info, s
 {
     struct segment_command_64 segment_command64 = {0};
 
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&segment_command64),
           sizeof(struct segment_command_64),
           1,
@@ -312,47 +391,78 @@ void parse_lc_dysymtab(FILE *p_file, struct load_command_info *lc_info, struct l
 {
     struct dysymtab_command dysymtabCommand = {0};
 
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&dysymtabCommand), sizeof(struct dysymtab_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+
+    printf("ilocalsym: %d(%x) nlocalsym: %d(%x) "
+           "iextdefsym: %d(%x) nextdefsym: %d(%x) "
+           "iundefsym: %d(%x) nundefsym %d(%x) "
+           "tocoff: %d(%x) ntoc: %d(%x)"
+           "modtaboff: %d(%x) nmodtab: %d(%x)"
+           "extrefsymoff: %d(%x) nextrefsyms: %d(%x)"
+           "indirectsymoff: %d(%x) nindirectsyms: %d(%x)"
+           "extreloff: %d(%x) nextrel: %d(%x)"
+           "locreloff: %d(%x) nlocrel: %d(%x) \r\n",
+           dysymtabCommand.ilocalsym, dysymtabCommand.ilocalsym,
+           dysymtabCommand.nlocalsym, dysymtabCommand.nlocalsym,
+           dysymtabCommand.iextdefsym, dysymtabCommand.iextdefsym,
+           dysymtabCommand.nextdefsym, dysymtabCommand.nextdefsym,
+           dysymtabCommand.iundefsym, dysymtabCommand.iundefsym,
+           dysymtabCommand.nundefsym, dysymtabCommand.nundefsym,
+           dysymtabCommand.tocoff, dysymtabCommand.tocoff,
+           dysymtabCommand.ntoc, dysymtabCommand.ntoc,
+           dysymtabCommand.modtaboff, dysymtabCommand.modtaboff,
+           dysymtabCommand.nmodtab, dysymtabCommand.nmodtab,
+           dysymtabCommand.extrefsymoff, dysymtabCommand.extrefsymoff,
+           dysymtabCommand.nextrefsyms, dysymtabCommand.nextrefsyms,
+           dysymtabCommand.indirectsymoff, dysymtabCommand.indirectsymoff,
+           dysymtabCommand.nindirectsyms, dysymtabCommand.nindirectsyms,
+           dysymtabCommand.extreloff, dysymtabCommand.extreloff,
+           dysymtabCommand.nextrel, dysymtabCommand.nextrel,
+           dysymtabCommand.locreloff, dysymtabCommand.locreloff,
+           dysymtabCommand.nlocrel, dysymtabCommand.nlocrel);
 }
 
 void parse_lc_id_dylinker(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
-    char *p_load_command = (char*)malloc(lc_info->st_load_command.cmdsize * sizeof(char));
-    fseeko(p_file, lc_info->offset, SEEK_SET);
-//    fseeko(p_file, sizeof(struct load_command) * -1, SEEK_CUR);
-    if (p_load_command == NULL)
+    char *p_mem = (char*)malloc(lc_info->st_load_command.cmdsize * sizeof(char));
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
+
+    if (p_mem == NULL)
     {
-        fseeko(p_file, lc_info->st_load_command.cmdsize, SEEK_CUR);
         return;
     }
 
-    fread(p_load_command, lc_info->st_load_command.cmdsize * sizeof(char), 1, p_file);
+    fread(p_mem, lc_info->st_load_command.cmdsize * sizeof(char), 1, p_file);
     printf("type: %s \r\n", st_lc_info.p_lc_name);
-    printf("name: %s \r\n", p_load_command + ((struct dylinker_command*)p_load_command)->name.offset);
+    printf("name: %s \r\n", p_mem + ((struct dylinker_command*)p_mem)->name.offset);
 
-    if (p_load_command != NULL)
-    {
-        free(p_load_command);
-        p_load_command = NULL;
-    }
+    free(p_mem);
+    p_mem = NULL;
 }
 
 void parse_lc_uuid(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct uuid_command uuidCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&uuidCommand), sizeof(struct uuid_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+    printf("uuid: ");
+    for (int i = 0; i < 16; i ++)
+    {
+        printf("%02X ", uuidCommand.uuid[i]);
+    }
+
+    printf("\r\n");
 }
 
 void parse_lc_build_version(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct build_version_command buildVersionCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&buildVersionCommand), sizeof(struct build_version_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
@@ -361,63 +471,117 @@ void parse_lc_build_version(FILE *p_file, struct load_command_info *lc_info, str
 void parse_lc_source_version(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct source_version_command sourceVersionCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&sourceVersionCommand), sizeof(struct source_version_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+    printf("version: %llu.%llu.%llu.%llu.%llu(%llx) \r\n",
+           sourceVersionCommand.version >> 48 & 0xfff,
+           sourceVersionCommand.version >> 30 & 0x3ff,
+           sourceVersionCommand.version >> 20 & 0x3ff,
+           sourceVersionCommand.version >> 10 & 0x3ff,
+           sourceVersionCommand.version & 0x3ff,
+           sourceVersionCommand.version);
 }
 
 void parse_lc_main(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct entry_point_command entryPointCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&entryPointCommand), sizeof(struct entry_point_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
-    printf("entryoff: %llx \r\n", entryPointCommand.entryoff);
+    printf("entryoff: %llu(%llx), stacksize: %llu(%llx) \r\n",
+           entryPointCommand.entryoff, entryPointCommand.entryoff,
+           entryPointCommand.stacksize, entryPointCommand.stacksize);
 }
 
 void parse_lc_id_dylib(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
-    struct dylib_command dylibCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
-    fread((char *)(&dylibCommand), sizeof(struct dylib_command), 1, p_file);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
+
+    char *p_mem = (char*)malloc(sizeof(char) * lc_info->st_load_command.cmdsize);
+    if (p_mem == NULL)
+    {
+        return;
+    }
+    fread(p_mem, sizeof(char) * lc_info->st_load_command.cmdsize, 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+
+    printf("timestamp: %d(%x), current_version: %d(%x),"
+           "compatibility_version: %d(%x) name: %s\r\n",
+           ((struct dylib_command*)p_mem)->dylib.timestamp, ((struct dylib_command*)p_mem)->dylib.timestamp,
+           ((struct dylib_command*)p_mem)->dylib.current_version, ((struct dylib_command*)p_mem)->dylib.current_version,
+           ((struct dylib_command*)p_mem)->dylib.compatibility_version, ((struct dylib_command*)p_mem)->dylib.compatibility_version,
+           p_mem + ((struct dylib_command*)p_mem)->dylib.name.offset);
+
+    free(p_mem);
+    p_mem = NULL;
 }
 
 void parse_lc_code_signature(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct linkedit_data_command linkeditDataCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&linkeditDataCommand), sizeof(struct linkedit_data_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+
+    printf("dataoff: %d(%x), datasize: %d(%x) \r\n",
+           linkeditDataCommand.dataoff, linkeditDataCommand.dataoff,
+           linkeditDataCommand.datasize, linkeditDataCommand.datasize);
 }
 
 void parse_lc_idfvmlib(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct fvmlib_command fvmlibCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
     fread((char *)(&fvmlibCommand), sizeof(struct fvmlib_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+
+    printf("minor_version: %d(%x), header_addr: %d(%x) \r\n",
+           fvmlibCommand.fvmlib.minor_version, fvmlibCommand.fvmlib.minor_version,
+           fvmlibCommand.fvmlib.header_addr, fvmlibCommand.fvmlib.header_addr);
 }
 
 void parse_lc_dyld_info(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct dyld_info_command dyldInfoCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
-    fread((char *)(&dyldInfoCommand) + sizeof(uint32_t) * 2, sizeof(struct dyld_info_command) - sizeof(uint32_t) * 2, 1, p_file);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
+    fread((char *)(&dyldInfoCommand), sizeof(struct dyld_info_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+    printf("rebase_off: %d(%x), rebase_size: %d(%x), "
+           "bind_off: %d(%x), bind_size: %d(%x), "
+           "lazy_bind_off: %d(%x), lazy_bind_size: %d(%x),"
+           "export_off: %d(%x), export_size: %d(%x) \r\n",
+           dyldInfoCommand.rebase_off, dyldInfoCommand.rebase_off,
+           dyldInfoCommand.rebase_size, dyldInfoCommand.rebase_size,
+           dyldInfoCommand.bind_off, dyldInfoCommand.bind_off,
+           dyldInfoCommand.bind_size, dyldInfoCommand.bind_size,
+           dyldInfoCommand.lazy_bind_off, dyldInfoCommand.lazy_bind_off,
+           dyldInfoCommand.lazy_bind_size, dyldInfoCommand.lazy_bind_size,
+           dyldInfoCommand.export_off, dyldInfoCommand.export_off,
+           dyldInfoCommand.export_size, dyldInfoCommand.export_size);
 }
 
 void parse_lc_version_min_macosx(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
 {
     struct version_min_command versionMinCommand = {0};
-    fseeko(p_file, lc_info->offset, SEEK_SET);
-    fread((char *)(&versionMinCommand) + sizeof(uint32_t) * 2, sizeof(struct version_min_command) - sizeof(uint32_t) * 2, 1, p_file);
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
+    fread((char *)(&versionMinCommand), sizeof(struct version_min_command), 1, p_file);
 
     printf("type: %s \r\n", st_lc_info.p_lc_name);
+
+    printf("version: %d.%d.%d(%x), sdk: %d.%d.%d(%x) \r\n",
+           versionMinCommand.version >> 16 & 0xff,
+           versionMinCommand.version >> 8 & 0xff,
+           versionMinCommand.version & 0xff,
+           versionMinCommand.version,
+           versionMinCommand.sdk >> 16 & 0xff,
+           versionMinCommand.sdk >> 8 & 0xff,
+           versionMinCommand.sdk & 0xff,
+           versionMinCommand.sdk);
 }

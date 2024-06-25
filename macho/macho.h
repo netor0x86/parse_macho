@@ -12,6 +12,34 @@
 #include <stdio.h>
 #include <capstone/capstone.h>
 
+/** header 的 cputype 的说明 */
+struct header_cpu_type_info
+{
+    /* cpu_type 的类型 */
+    int32_t cpu_type;
+    /* cpu_type 的名称 */
+    char *p_cpu_type_name;
+    /* cpu_type 的描述 */
+    char *p_desc;
+};
+
+extern struct header_cpu_type_info arr_st_header_cpu_type[];
+int get_header_cpu_type_info_size();
+
+///** header 的 cpusubtype 的说明 */
+//struct header_cpu_sub_type_info
+//{
+//    /* cpu_type 的类型 */
+//    int32_t cpu_sub_type;
+//    /* cpu_type 的名称 */
+//    char *p_cpu_sub_type_name;
+//    /* cpu_type 的描述 */
+//    char *p_desc;
+//};
+//
+//extern struct header_cpu_sub_type_info arr_st_header_cpu_sub_type[];
+//int get_header_cpu_sub_type_info_size();
+
 /** header 的 filetype 的说明 */
 struct header_file_type_info
 {
