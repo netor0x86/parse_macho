@@ -1,12 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <sys/stat.h>
 #include <glib.h>
 #include "macho/macho.h"
 
 #define SAFE_FREE(point) {if (point) {free(point); point = NULL;}}
-
 
 #define FILE_NAME ""
 char *p_file_name = FILE_NAME;
@@ -167,6 +165,11 @@ uint32_t get_file_magic()
     }
 
     return magic;
+}
+
+void __attribute__((constructor)) init (void)
+{
+    printf("\033[41m\033[37m\033[1m 欢迎使用 Parse Mach-O 命令行工具 code by Netor0x86 \033[0m\r\n");
 }
 
 int main(int argc, char *argv[])

@@ -173,7 +173,7 @@ struct lc_info arr_st_lc_info[] =
     {LC_SEGMENT_64, "LC_SEGMENT_64", "64-bit segment of this file to be mapped", &parse_segment_command_64},
     {LC_ROUTINES_64, "LC_ROUTINES_64", "64-bit image routines"},
     {LC_UUID, "LC_UUID", "the uuid", &parse_lc_uuid},
-    {LC_RPATH, "LC_RPATH", "runpath additions"},
+    {LC_RPATH, "LC_RPATH", "runpath additions", &parse_lc_rpath},
     {LC_CODE_SIGNATURE, "LC_CODE_SIGNATURE", "local of code signature", &parse_lc_code_signature},
     {LC_SEGMENT_SPLIT_INFO, "LC_SEGMENT_SPLIT_INFO", "local of info to split segments", &parse_lc_code_signature},
     {LC_REEXPORT_DYLIB, "LC_REEXPORT_DYLIB", "load and re-export dylib", &parse_lc_id_dylib},
@@ -584,4 +584,23 @@ void parse_lc_version_min_macosx(FILE *p_file, struct load_command_info *lc_info
            versionMinCommand.sdk >> 8 & 0xff,
            versionMinCommand.sdk & 0xff,
            versionMinCommand.sdk);
+}
+
+void parse_lc_rpath(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info)
+{
+    fseeko(p_file, (off_t)lc_info->offset, SEEK_SET);
+
+    char *p_mem = (char*)malloc(sizeof(char) * lc_info->st_load_command.cmdsize);
+    if (p_mem == NULL)
+    {
+        return;
+    }
+    fread(p_mem, sizeof(char) * lc_info->st_load_command.cmdsize, 1, p_file);
+
+    printf("type: %s \r\n", st_lc_info.p_lc_name);
+
+    printf("path: %s \r\n", p_mem + ((struct rpath_command*)p_mem)->path.offset);
+
+    free(p_mem);
+    p_mem = NULL;
 }

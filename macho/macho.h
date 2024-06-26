@@ -113,6 +113,7 @@ void parse_lc_dyld_info(FILE *p_file, struct load_command_info *lc_info, struct 
  * LC_VERSION_MIN_MACOSX LC_VERSION_MIN_IPHONEOS LC_VERSION_MIN_WATCHOS LC_VERSION_MIN_TVOS
  */
 void parse_lc_version_min_macosx(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info);
+void parse_lc_rpath(FILE *p_file, struct load_command_info *lc_info, struct lc_info st_lc_info);
 
 
 /** 定义函数指针，应用指向各个 load_command 处理函数 */
