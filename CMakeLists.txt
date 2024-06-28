@@ -5,6 +5,11 @@ set(CMAKE_C_STANDARD 23)
 
 add_executable(parse_macho main.c
         macho/macho.c
+        macho/macho.h
+        macho/macho64.c
+        macho/macho64.c
+        endian/endian.c
+        endian/endian.h
 )
 
 find_library(CAPSTONE_LIBRARY NAMES libcapstone.a PATHS /usr/local/Cellar/capstone/5.0.1/lib)

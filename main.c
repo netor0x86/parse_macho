@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <glib.h>
-#include "macho/macho.h"
+#include "macho/macho64.h"
 
 #define SAFE_FREE(point) {if (point) {free(point); point = NULL;}}
 
@@ -12,7 +12,6 @@ char *p_file_name = FILE_NAME;
 
 long get_file_size(const char *filename)
 {
-    printf("file_name : %s \r\n", filename);
     struct stat st = {0};
 
     if (lstat(filename, &st) == 0)
@@ -54,17 +53,17 @@ void parse_load_command(FILE *p_file, GList *list)
     }
 }
 
-void magic64()
+void parse_magic64(uint64_t offset, uint32_t endian)
 {
-    FILE *p_file = NULL;
-
-    p_file = fopen(p_file_name, "rb");
+    FILE *p_file = fopen(p_file_name, "rb");
 
     if (p_file == NULL)
     {
         printf("文件打开失败");
         return;
     }
+
+    fseeko(p_file, (off_t)offset, SEEK_SET);
 
     struct mach_header_64 st_mach_header_64 = {0};
     struct load_command *p_st_load_command = NULL;
@@ -122,7 +121,7 @@ void magic64()
         lc_info->st_load_command.cmdsize = p_st_load_command[i].cmdsize;
         list = g_list_append(list, lc_info);
 
-        fseek(p_file, p_st_load_command[i].cmdsize - sizeof(struct load_command), SEEK_CUR);
+        fseeko(p_file, (off_t)(p_st_load_command[i].cmdsize - sizeof(struct load_command)), SEEK_CUR);
     }
 
     parse_load_command(p_file, list);
@@ -131,11 +130,8 @@ void magic64()
 
     SAFE_FREE(p_st_load_command);
 
-    if (p_file)
-    {
-        fclose(p_file);
-        p_file = NULL;
-    }
+    fclose(p_file);
+    p_file = NULL;
 }
 
 /**
@@ -143,7 +139,7 @@ void magic64()
  *
  * @return 返回 -1 说明打开失败，正常返回 magic 类型
  */
-uint32_t get_file_magic()
+uint32_t get_file_magic(uint32_t offset)
 {
     FILE *p_file = NULL;
 
@@ -155,6 +151,7 @@ uint32_t get_file_magic()
         return -1;
     }
 
+    fseeko(p_file, offset, SEEK_SET);
     uint32_t magic = 0;
     fread(&magic, sizeof(uint32_t), 1, p_file);
 
@@ -172,6 +169,126 @@ void __attribute__((constructor)) init (void)
     printf("\033[41m\033[37m\033[1m 欢迎使用 Parse Mach-O 命令行工具 code by Netor0x86 \033[0m\r\n");
 }
 
+void parse_fat_header(uint32_t endian)
+{
+    FILE *p_file = NULL;
+
+    p_file = fopen(p_file_name, "rb");
+
+    if (p_file == NULL)
+    {
+        printf("文件打开失败");
+        return;
+    }
+
+    struct fat_header fat_header = {0};
+    fread(&fat_header, sizeof(struct fat_header), 1, p_file);
+
+    uint32_t nfat_arch = big_endian_to_little_endian_uint32(fat_header.nfat_arch, endian);
+
+    struct fat_arch *p_fat_arch = (struct fat_arch *)malloc(
+            sizeof(struct fat_arch) * nfat_arch);
+    if (p_fat_arch == NULL)
+    {
+        return ;
+    }
+
+    fread(p_fat_arch, sizeof(struct fat_arch), nfat_arch, p_file);
+
+    printf("nfat_arch number is : %d \r\n", nfat_arch);
+    for (int i = 0; i < nfat_arch; i ++)
+    {
+        printf("cputype: %d(%x) cpusubtype: %d(%x)"
+               "offset: %d(%x) size: %d(%x)"
+               "align: %d(%x) \r\n",
+               big_endian_to_little_endian_uint32(p_fat_arch[i].cputype, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].cputype, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].cpusubtype, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].cpusubtype, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].offset, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].offset, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].size, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].size, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].align, endian),
+               big_endian_to_little_endian_uint32(p_fat_arch[i].align, endian));
+    }
+
+    for (int i = 0; i < nfat_arch; i ++)
+    {
+        uint32_t magic = get_file_magic(big_endian_to_little_endian_uint32(p_fat_arch[i].offset, endian));
+        switch (magic)
+        {
+            case MH_MAGIC:
+                printf("MH_MAGIC\r\n");
+                break;
+            case MH_CIGAM:
+                printf("MH_CIGAM\r\n");
+                break;
+            case MH_MAGIC_64:
+                printf("MH_MAGIC_64\r\n");
+                parse_magic64(big_endian_to_little_endian_uint32(p_fat_arch[i].offset, endian), LITTLE_ENDIAN);
+                break;
+            case MH_CIGAM_64:
+                printf("MH_CIGAM_64\r\n");
+                parse_magic64(big_endian_to_little_endian_uint32(p_fat_arch[i].offset, endian), BIG_ENDIAN);
+                break;
+        }
+    }
+
+    free(p_fat_arch);
+    p_fat_arch = NULL;
+
+    fclose(p_file);
+    p_file = NULL;
+}
+
+void parse_fat_header_64(uint32_t endian)
+{
+    FILE *p_file = NULL;
+
+    p_file = fopen(p_file_name, "rb");
+
+    if (p_file == NULL)
+    {
+        printf("文件打开失败");
+        return;
+    }
+
+    struct fat_header fat_header = {0};
+    fread(&fat_header, sizeof(struct fat_header), 1, p_file);
+
+    struct fat_arch_64 *p_fat_arch_64 = (struct fat_arch_64 *)malloc(sizeof(struct fat_arch_64) * fat_header.nfat_arch);
+    if (p_fat_arch_64 == NULL)
+    {
+        return ;
+    }
+
+    fread(p_fat_arch_64, sizeof(struct fat_arch_64), fat_header.nfat_arch, p_file);
+    for (int i = 0; i < fat_header.nfat_arch; i ++)
+    {
+        printf("cputype: %d(%x) cpusubtype: %d(%x)"
+               "offset: %llu(%llx) size: %llu(%llx)"
+               "align: %d(%x) reserved: %d(%x) \r\n",
+               p_fat_arch_64[i].cputype, p_fat_arch_64[i].cputype,
+               p_fat_arch_64[i].cpusubtype, p_fat_arch_64[i].cpusubtype,
+               p_fat_arch_64[i].offset, p_fat_arch_64[i].offset,
+               p_fat_arch_64[i].size, p_fat_arch_64[i].size,
+               p_fat_arch_64[i].align, p_fat_arch_64[i].align,
+               p_fat_arch_64[i].reserved, p_fat_arch_64[i].reserved);
+    }
+
+    free(p_fat_arch_64);
+    p_fat_arch_64 = NULL;
+
+    fclose(p_file);
+    p_file = NULL;
+}
+
+void parse_magic(uint64_t offset, uint32_t endian)
+{
+
+}
+
 int main(int argc, char *argv[])
 {
     /* 解析命令行传来的文件 */
@@ -180,24 +297,35 @@ int main(int argc, char *argv[])
         p_file_name = argv[1];
     }
 
-    uint32_t magic = get_file_magic();
-    if (magic == -1)
-    {
-        return -1;
-    }
+    uint32_t magic = get_file_magic(0);
 
     /* 判断文件类型 */
-    /* 暂时不知道 MAGIC 和 CIGAM 的差别 */
     switch (magic)
     {
+        case FAT_MAGIC:
+            parse_fat_header(LITTLE_ENDIAN);
+            break;
+        case FAT_CIGAM:
+            parse_fat_header(BIG_ENDIAN);
+            break;
+        case FAT_MAGIC_64:
+            parse_fat_header_64(LITTLE_ENDIAN);
+            break;
+        case FAT_CIGAM_64:
+            parse_fat_header_64(BIG_ENDIAN);
+            break;
         case MH_MAGIC:
+            parse_magic(0, LITTLE_ENDIAN);
             break;
         case MH_CIGAM:
+            parse_magic(0, BIG_ENDIAN);
             break;
         case MH_MAGIC_64:
-            magic64();
+            parse_magic64(0, LITTLE_ENDIAN);
             break;
         case MH_CIGAM_64:
+            parse_magic64(0, BIG_ENDIAN);
+            break;
             break;
         default:
             printf("不是 Mach-O 文件格式\r\n");
