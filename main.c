@@ -226,7 +226,7 @@ void parse_fat_header(uint32_t endian)
                 break;
             case MH_MAGIC_64:
                 printf("MH_MAGIC_64\r\n");
-                parse_magic64(big_endian_to_little_endian_uint32(p_fat_arch[i].offset, endian), LITTLE_ENDIAN);
+                parse_magic64(big_endian_to_little_endian_uint32(p_fat_arch[i].offset, endian), _LITTLE_ENDIAN);
                 break;
             case MH_CIGAM_64:
                 printf("MH_CIGAM_64\r\n");
@@ -303,25 +303,25 @@ int main(int argc, char *argv[])
     switch (magic)
     {
         case FAT_MAGIC:
-            parse_fat_header(LITTLE_ENDIAN);
+            parse_fat_header(_LITTLE_ENDIAN);
             break;
         case FAT_CIGAM:
             parse_fat_header(BIG_ENDIAN);
             break;
         case FAT_MAGIC_64:
-            parse_fat_header_64(LITTLE_ENDIAN);
+            parse_fat_header_64(_LITTLE_ENDIAN);
             break;
         case FAT_CIGAM_64:
             parse_fat_header_64(BIG_ENDIAN);
             break;
         case MH_MAGIC:
-            parse_magic(0, LITTLE_ENDIAN);
+            parse_magic(0, _LITTLE_ENDIAN);
             break;
         case MH_CIGAM:
             parse_magic(0, BIG_ENDIAN);
             break;
         case MH_MAGIC_64:
-            parse_magic64(0, LITTLE_ENDIAN);
+            parse_magic64(0, _LITTLE_ENDIAN);
             break;
         case MH_CIGAM_64:
             parse_magic64(0, BIG_ENDIAN);
@@ -331,6 +331,8 @@ int main(int argc, char *argv[])
             printf("不是 Mach-O 文件格式\r\n");
             return -1;
     }
+
+    printf("解析完成 \r\n");
 
     return 0;
 }

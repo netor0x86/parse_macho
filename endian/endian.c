@@ -12,7 +12,7 @@
  */
 uint16_t big_endian_to_little_endian_uint16(uint16_t value, uint32_t endian)
 {
-    if (endian == LITTLE_ENDIAN)
+    if (endian == _LITTLE_ENDIAN)
     {
         return value;
     }
@@ -29,7 +29,7 @@ uint16_t big_endian_to_little_endian_uint16(uint16_t value, uint32_t endian)
  */
 uint32_t big_endian_to_little_endian_uint32(uint32_t value, uint32_t endian)
 {
-    if (endian == LITTLE_ENDIAN)
+    if (endian == _LITTLE_ENDIAN)
     {
         return value;
     }
@@ -49,7 +49,7 @@ uint32_t big_endian_to_little_endian_uint32(uint32_t value, uint32_t endian)
  */
 uint64_t big_endian_to_little_endian_uint64(uint64_t value, uint32_t endian)
 {
-    if (endian == LITTLE_ENDIAN)
+    if (endian == _LITTLE_ENDIAN)
     {
         return value;
     }
