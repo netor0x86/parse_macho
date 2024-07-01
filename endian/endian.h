@@ -7,8 +7,8 @@
 
 #include "../macho/macho64.h"
 
-#define _LITTLE_ENDIAN 0x01
-#define _BIG_ENDIAN    0x02
+#define DEF_LITTLE_ENDIAN 0x01
+#define DEF_BIG_ENDIAN    0x02
 
 /**
  * 返回16位小尾数据
